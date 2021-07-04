@@ -21,7 +21,7 @@ namespace MyBaseOnC
             if ( command == "readorder" )
             {
                 Console.WriteLine( "command: readorder" );
-                List<Order> orders = ReadOrder();
+                List<Order> orders = ReadOrders();
                 foreach ( Order order in orders )
                 {
                     Console.WriteLine( order.OrderId );
@@ -34,7 +34,7 @@ namespace MyBaseOnC
             if ( command == "readcustomer" )
             {
                 Console.WriteLine( "command: readcustomer" );
-                List<Customer> customers = ReadCustomer();
+                List<Customer> customers = ReadCustomers();
                 foreach ( Customer customer in customers )
                 {
                     Console.WriteLine( customer.CustomerId );
@@ -96,9 +96,21 @@ namespace MyBaseOnC
                 int sum = SumOrders();
                 Console.WriteLine( "Sum orders: " + sum );
             }
+
+            if ( command == "writestatistic" )
+            {
+                Console.WriteLine( "command: writestatistic" );
+                List<StatisticByCustomers> statistics = WriteStatistics(); 
+                foreach ( StatisticByCustomers statistic in statistics )
+                {
+                    Console.WriteLine( statistic.CustomerId );
+                    Console.WriteLine( statistic.OrderCount );
+                    Console.WriteLine( statistic.OrderSum );
+                }
+            }
         }
 
-        private static List<Order> ReadOrder()
+        private static List<Order> ReadOrders()
         {
             List<Order> orders = new List<Order>();
             using ( SqlConnection connection = new SqlConnection( _connectionString ) )
@@ -134,7 +146,7 @@ namespace MyBaseOnC
             return orders;
         }
 
-        private static List<Customer> ReadCustomer()
+        private static List<Customer> ReadCustomers()
         {
             List<Customer> customers = new List<Customer>();
             using ( SqlConnection connection = new SqlConnection( _connectionString ) )
@@ -370,6 +382,40 @@ namespace MyBaseOnC
                 }
             }
             return sum;
+        }
+
+        private static List<StatisticByCustomers> WriteStatistics()
+        {
+            List<StatisticByCustomers> statistics = new List<StatisticByCustomers>();
+            using ( SqlConnection connection = new SqlConnection( _connectionString ) )
+            {
+                connection.Open();
+                using ( SqlCommand command = new SqlCommand() )
+                {
+                    command.Connection = connection;
+                    command.CommandText =
+                        @"SELECT c.CustomerId, COUNT(o.OrderId) as count_order, SUM(o.Price) as sum_order
+                            FROM [Customer] c
+                            JOIN [Order] o on o.CustomerId = c.CustomerId
+                            GROUP BY c.CustomerId
+                            ";
+
+                    using ( SqlDataReader reader = command.ExecuteReader() )
+                    {
+                        while ( reader.Read() )
+                        {
+                            var statistic = new StatisticByCustomers
+                            {
+                                CustomerId = Convert.ToInt32( reader[ "CustomerId" ] ),
+                                OrderCount = Convert.ToInt32( reader[ "count_order" ] ),
+                                OrderSum = Convert.ToInt32( reader[ "sum_order" ] )
+                            };
+                            statistics.Add( statistic );
+                        }
+                    }
+                }
+            }
+            return statistics;
         }
     }
 }
